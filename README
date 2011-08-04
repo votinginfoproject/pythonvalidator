@@ -1,0 +1,35 @@
+filevalidator.py is a python script to validate xml feeds.
+
+Two parameteres are accepted:
+
+-v Version number of the schema to validate against, defaults to 2.3
+-f File list of files to validate
+
+The script will start be running a basic validation of the file against the schema, returning True if it is valid and false otherwise. After this the script runs through a semantic check where the following are validated:
+
+Warnings:
+Fields with tags but no values
+State abbreviations that are not 2 characters long
+Urls that do not match the given regular expression
+
+Errors:
+Non-numeric starting and ending house numbers
+Ending house numbers that are either 0 or are less than the starting house number
+Zip codes that are invalid (both 5 digit and 9 digit zip codes are accepted)
+Emails that are invalid
+Localities that do not match any of the types in the specification
+Total votes that are not equal to valid votes + overvotes + blank votes
+Fields supposed to be integers according to the schema that throw an error
+
+After the semantic validation, validation is done against street segments to check for no duplicate values with housing numbers and precincts, such as housing numbers included within two different street segment sets. The following are validated
+
+Warnings:
+House numbers that overlap but contain consistent precinct IDs
+
+Errors:
+House number that overlap and contain different precinct information
+Street segements with missing required fields
+
+If the file is over 150MBs and has returned either 5000 errors or warnings, the validator finishes writing the last error to the file and returns. This is done to prevent problems with excessive memory usage that comes up with larger files.
+
+The final validation check is to cycle through all fields for required  values that may be missing. The first validation check will stop after finding the first error, this check will find all of those errors and return them to the user. This will only be run if the first validation returned false. This will create an error file listing all missing fields and their element id's
