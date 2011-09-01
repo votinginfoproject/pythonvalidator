@@ -1,125 +1,20 @@
-import argparse, urllib, sys, os, re
+import argparse, urllib, sys, os, re, schema
 from lxml import etree
 
-baseSchemaUrl = "http://election-info-standard.googlecode.com/files/vip_spec_v"
-version = "2.3"
-versionList = ["2.0","2.1","2.2","2.3","3.0"]
+def get_parsed_args():
 
-zipcode = re.compile("\d{5}(?:[-\s]\d{4})?")
-email = re.compile("[a-zA-Z0-9+_\-\.]+@[0-9a-zA-Z][.-0-9a-zA-Z]*.[a-zA-Z]")
-url = re.compile("http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))")
-localityTypes = ['county','city','town','township','borough','parish','village','region']
+	parser = argparse.ArgumentParser(description='validate xml')
 
-parser = argparse.ArgumentParser(description='validate xml')
+	parser.add_argument('-s', action='store', dest='schema',
+            		help='xsd schema to validate against xml document')
 
-parser.add_argument('-s', action='store', dest='schema',
-                    help='xsd schema to validate against xml document')
+	parser.add_argument('-v', action='store', dest='version',
+                        help='xsd version used for validation')
 
-parser.add_argument('-v', action='store', dest='version',
-                    help='xsd version used for validation')
+	parser.add_argument('-f', action='append', dest='files',
+                        default=[], help='files to validate',)
 
-parser.add_argument('-f', action='append', dest='files',
-                    default=[], help='files to validate',)
-
-results = parser.parse_args()
-
-xmlparser = etree.XMLParser()
-
-parsedschema = {}
-intList = []
-startHouseNum = -1
-totalVotes = 0
-sizelimit = 150000000
-streetsegfields = ["city","zip","street_direction","street_name","address_direction"]
-streetsegrequiredfields = ["city","zip","street_name"]
-
-def checkIfRequired(subelem):
-	if not("minOccurs" in subelem.attrib) or int(subelem.get("minOccurs"))>0:
-		return "True"
-	return "False"
-
-def getXSVal(element): #removes namespace
-	return element.tag.split('}')[-1]	
-
-def setBaseVals(element):
-	elemDict = {}
-	elemDict["elements"] = []
-	elemDict["type"] = getXSVal(element)
-	elemDict["indicator"] = getXSVal(element[0])
-	attributes = element[1:]
-	if len(attributes) > 0:
-		elemDict["attributes"] = []
-	for a in attributes:
-		elemDict["attributes"].append(a.attrib)	
-	return elemDict	
-
-def pullschema(data):
-	xsdschema = {}	
-	root = data.getroot()
-	
-	for elem in root:
-		ename = elem.get("name")
-		if ename == "votesWithCertification": #not actually used in the schema yet, when in use we'll have to make a special case for this
-			continue
-		xsdschema[ename] = {}
-		if ename == "vip_object":
-			vipelements = elem[0][0].getchildren()
-			for vipe in vipelements:
-				vipename = vipe.get("name")
-				xsdschema[ename][vipename] = setBaseVals(vipe[0])
-				indicator = xsdschema[ename][vipename]["indicator"]
-				if indicator == "all":
-					requiredlist = []
-				vipsubelements = vipe[0][0].getchildren()
-				xsdschema[ename][vipename]["elements"] = []
-				for vipse in vipsubelements:
-					if vipse.get("name") == None:
-						vipse = vipse[0] 
-					xsdschema[ename][vipename]["elements"].append(vipse.attrib)
-					index = len(xsdschema[ename][vipename]["elements"])-1
-					required = checkIfRequired(vipse)
-					xsdschema[ename][vipename]["elements"][index]["required"] = required
-					if required == "True" and indicator == "all":
-						requiredlist.append(vipse.get("name"))
-					if len(vipse) > 0:
-						xsdschema[ename][vipename]["elements"][index]["attributes"] = "sort_order"
-						xsdschema[ename][vipename]["elements"][index]["type"] = "xs:integer"
-				if indicator == "all":
-					xsdschema[ename][vipename]["requireds"] = requiredlist
-					
-		else:
-			xsdschema[ename] = setBaseVals(elem)
-			etype = xsdschema[ename]["type"]
-			if etype == "complexType":
-				requiredList = []
-			children = elem[0].getchildren()
-			for c in children:
-				if etype == "complexType":
-					xsdschema[ename]["elements"].append(c.attrib)		
-					index = len(xsdschema[ename]["elements"])-1
-					required = checkIfRequired(c)
-					xsdschema[ename]["elements"][index]["required"] = required
-					if etype=="complexType":
-						requiredList.append(c.get("name"))
-				else:
-					xsdschema[ename]["elements"].append(c.get("value"))
-			if etype == "complexType":
-				xsdschema[ename]["requireds"] = requiredList
-	return xsdschema
-
-def getIntegerTypes(schema):
-	ints = []
-	for elem in schema:
-		if elem == "vip_object":
-			for vipe in schema[elem]:
-				for i in range(len(schema[elem][vipe]["elements"])):
-					if schema[elem][vipe]["elements"][i]["type"] == "xs:integer" and not(schema[elem][vipe]["elements"][i]["name"] in ints):
-						ints.append(schema[elem][vipe]["elements"][i]["name"])
-		elif schema[elem]["type"] == "complexType":
-			for i in range(len(schema[elem]["elements"])):
-				if schema[elem]["elements"][i]["type"] == "xs:integer" and not(schema[elem]["elements"][i]["name"] in ints):
-					ints.append(schema[elem]["elements"][i]["name"])
-	return ints
+	return parser.parse_args()
 
 def resetStartHouseNum():
 	global startHouseNum
@@ -139,7 +34,7 @@ def decrementVotes(votes):
 	return totalVotes 
 
 def printStartError(etag, parent):
-	if parent.get("id") == None:
+	if parent.get("id") is None and parent.tag != "vip_object":
 		parent = parent.getparent()
 	return "'" + parent.tag + "' with attributes " + str(parent.attrib) + ": '" + str(etag) + "' "
 
@@ -205,6 +100,7 @@ def streetsegCheck(tree, datafile):
 	ecount = 0
 	wcount = 0
 	streetmap = {}
+	streetError = False
 
 	for elem in tree:
 		if elem.tag == "street_segment":
@@ -224,7 +120,12 @@ def streetsegCheck(tree, datafile):
 					streetname += tempmap[f].strip() + "_"
 				elif f in streetsegrequiredfields:
 					ferr.write("Error in street segment with ID '" + str(ident) + "' missing required '" + f + "'\n")
+					streetError = True
 	
+			if streetError:
+				streetError = False
+				continue
+
 			streetname = streetname.rstrip("_").lower().replace(" ","_")
 		
 			streetside = tempmap["odd_even_both"]
@@ -303,6 +204,26 @@ def fullrequiredCheck(root, schema):
 					ferr.write("Error '" + vipelem.tag + "' ID:" + str(ident) + " missing " + schema["vip_object"][vipelem.tag]["elements"][i]["name"] + "\n")
 					break
 
+baseSchemaUrl = "http://election-info-standard.googlecode.com/files/vip_spec_v"
+version = "2.3"
+versionList = ["2.0","2.1","2.2","2.3","3.0"]
+localityTypes = ['county','city','town','township','borough','parish','village','region']
+sizelimit = 150000000
+streetsegfields = ["city","zip","street_direction","street_name","address_direction","start_house_number","end_house_number","odd_even_both"]
+streetsegrequiredfields = ["city","zip","street_name","start_house_number","end_house_number","odd_even_both"]
+
+zipcode = re.compile("\d{5}(?:[-\s]\d{4})?")
+email = re.compile("[a-zA-Z0-9+_\-\.]+@[0-9a-zA-Z][.-0-9a-zA-Z]*.[a-zA-Z]")
+url = re.compile("http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))")
+
+xmlparser = etree.XMLParser()
+parsedschema = {}
+intList = []
+startHouseNum = -1
+totalVotes = 0
+
+results = get_parsed_args()
+
 if results.version:
 	version = results.version
 if version == "2.2":
@@ -310,20 +231,18 @@ if version == "2.2":
 else:
 	fschema = urllib.urlopen(baseSchemaUrl + version + ".xsd")
 
-xmlschema_doc = etree.parse(fschema)
-xmlschema = etree.XMLSchema(xmlschema_doc)
+schema = schema.Schema("version","2.3")
 
 fname = results.files[0]
 
 data = etree.parse(open(fname),xmlparser)
 root = data.getroot()
-basicCheck = xmlschema.validate(data)
+basicCheck = schema.xmlschema.validate(data)
 
 print "Basic Schema Check for " + str(fname) + ": " + str(basicCheck)
 
 print "Creating dictionary of xml schema....."
-parsedschema = pullschema(xmlschema_doc)
-intList = getIntegerTypes(parsedschema)
+intList = schema.getIntegerTypes()
 print "Finished pulling schema"
 
 ferr = open(fname + ".err","w")
@@ -349,6 +268,6 @@ fwarn.close()
 if not(basicCheck):
 	print "Running full check on required xml fields"
 	ferr = open(fname + "fullerrors.err","w")
-	fullrequiredCheck(root, parsedschema)
+	fullrequiredCheck(root,schema.schema)
 	print "Finished full required xml field check, data located in " + fname + "fullerrors.err"
 	ferr.close()
