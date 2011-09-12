@@ -43,7 +43,6 @@ def printStartError(etag, parent):
 def checkElement(elem, parent):
 	if (len(elem.getchildren()) == 0 and (elem.text == None or len((elem.text).strip()) == 0)):
 		fwarn.write("Warning: " + printStartError(elem.tag,parent) + "contains tag but the value is empty\n")
-		return False
 	elif(len(elem.getchildren()) == 0): #ending element
 		if(elem.tag == "start_house_number"):
 			try:
@@ -73,18 +72,15 @@ def checkElement(elem, parent):
 		elif(parent.tag == "contest_result"):
 			if(elem.tag == "total_votes"):
 				setTotalVotes(int(elem.text))
-			if(elem.tag == "total_valid_votes" or elem.tag == "overvotes"):
+			elif(elem.tag == "total_valid_votes" or elem.tag == "overvotes"):
 				decrementVotes(int(elem.text))
-			if(elem.tag == "blank_votes"):
-				if decrementVotes(int(elem.text))!=0:
-					ferr.write("Error: " + printStartError("totalVotes",parent) + "is not equal to valid_votes + overvotes + blank_votes\n")
+			elif(elem.tag == "blank_votes") and decrementVotes(int(elem.text))!=0:
+				ferr.write("Error: " + printStartError("totalVotes",parent) + "is not equal to valid_votes + overvotes + blank_votes\n")
 		elif elem.tag in intList:
 			try:
-				tempint = int(elem.text)
+				int(elem.text)
 			except:
 				ferr.write("Error: "  + printStartError(elem.tag,parent) + "is '" + elem.text + "' which is not numeric\n")
-		return False	
-	return True #otherwise, not an ending element
 
 def findElements(elem):
 	if(elem.tag == "street_segment"):
@@ -92,9 +88,10 @@ def findElements(elem):
 	elif(elem.tag == "contest_result"):
 		resetTotalVotes()
 	for subelem in elem:
-		if not(checkElement(subelem, elem)):
-			continue
-		findElements(subelem)
+		if len(subelem.getchildren()) == 0:
+			checkElement(subelem, elem)
+		else:
+			findElements(subelem)
 
 def semanticCheck(root, schema, fname):
 	setIntTypes(schema)
