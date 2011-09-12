@@ -1,6 +1,7 @@
 import argparse, urllib, sys, os, re, schema
 from lxml import etree
 from streetsegmentvalidator import streetsegCheck
+from semanticvalidator import semanticCheck1
 from fullrequiredvalidator import fullrequiredCheck
 
 def get_parsed_args():
@@ -96,6 +97,20 @@ def semanticCheck(elem):
 			continue
 		semanticCheck(subelem)
 
+def __init__(self, createtype="version", createdata="2.3", versionlist=VERSIONLIST):	
+        if createtype == "version" and createdata in versionlist:
+            self.version = createdata
+            schemafile = self.getSchemaFile() 
+        elif createtype == "file" and os.path.exists(createdata):
+            schemafile = open(createdata)
+        else:
+            print "Error creating Schema: Invalid type/version specified"
+            sys.exit(0)  
+	self.xmlschema = etree.XMLSchema(self.rawschema)
+        self.schema = self.createSchema(self.rawschema)
+
+BASESCHEMAURL = "http://election-info-standard.googlecode.com/files/vip_spec_v"
+VERSIONLIST = ["2.0","2.1","2.2","2.3","3.0"]
 localityTypes = ['county','city','town','township','borough','parish','village','region']
 sizelimit = 150000000
 
@@ -106,18 +121,26 @@ url = re.compile("http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-
 xmlparser = etree.XMLParser()
 startHouseNum = -1
 totalVotes = 0
+version = "2.3"
 
 results = get_parsed_args()
 
 if results.version:
 	version = results.version
 
+if self.version == "2.2":
+	fschema = urllib.urlopen(baseUrl + self.version + "a.xsd")
+else:
+	fschema = urllib.urlopen(baseUrl + self.version + ".xsd")
+return fschema      
+
 fname = results.files[0]
 
 data = etree.parse(open(fname),xmlparser)
 root = data.getroot()
 
-schema = schema.Schema("version",version)
+schema = schema.Schema(fschema)
+
 basicCheck = schema.xmlschema.validate(data)
 
 print "Basic Schema Check for " + str(fname) + ": " + str(basicCheck)
@@ -134,6 +157,7 @@ fwarn.write("Warnings for " + fname + "\n")
 fwarn.write("******************************************\n")	
 print "Checking file semantics...."
 semanticCheck(root)
+#semanticCheck1(root,fwarn,ferr)
 print "Finished checking file semantics, data located in " + fname + ".err and " + fname + ".err"
 ferr.close()
 fwarn.close()
