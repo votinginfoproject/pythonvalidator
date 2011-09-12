@@ -28,6 +28,7 @@ def fullrequiredCheck(root, schema, fname):
 				if not element in childrenTags:
 					ferr.write("Error '" + vipelem.tag + "' ID:" + str(ident) + " missing " + element + "\n")
 				elif element in schema and schema[element]["type"] == "complexType":#check here for the type, if the type is valid in complex type from the schema, continue searching for required elements
+					print "random crap"
 			for i in range(len(elements)):
 				if elements[i]["name"] in requiredList:
 					if not(elements[i]["name"] in childrenTags):
