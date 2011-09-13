@@ -43,7 +43,7 @@ def printStartError(etag, parent):
 def checkElement(elem, parent):
 	if (len(elem.getchildren()) == 0 and (elem.text == None or len((elem.text).strip()) == 0)):
 		fwarn.write("Warning: " + printStartError(elem.tag,parent) + "contains tag but the value is empty\n")
-	elif(len(elem.getchildren()) == 0): #ending element
+	else:
 		if(elem.tag == "start_house_number"):
 			try:
 				global startHouseNum
@@ -88,10 +88,16 @@ def findElements(elem):
 	elif(elem.tag == "contest_result"):
 		resetTotalVotes()
 	for subelem in elem:
-		if len(subelem.getchildren()) == 0:
+		if len(subelem.getchildren()) == 0: #ending element
 			checkElement(subelem, elem)
+			subelem.clear()
+			while subelem.getprevious() is not None:
+				del subelem.getparent()[0]
 		else:
 			findElements(subelem)
+	elem.clear()
+	while elem.getprevious() is not None:
+		del elem.getparent()[0]
 
 def semanticCheck(root, schema, fname):
 	setIntTypes(schema)
