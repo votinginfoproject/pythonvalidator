@@ -49,7 +49,9 @@ print "Basic Schema Check for " + str(fname) + ": " + str(basicCheck)
 
 semanticCheck(root, schema, fname)
 
-streetsegCheck(root, fname)
+root = data.getroot()
 
-if not(basicCheck):
-	fullrequiredCheck(root,schema.schema,fname)
+streetsegCheck(fname)
+
+#if not(basicCheck):
+#	fullrequiredCheck(root,schema.schema,fname)
