@@ -40,6 +40,7 @@ def getNewStreetData(streetfields, ssid):
 def validateStreetSegments(context):
 
 	streetmap = {}
+	isDuplicate = False
 	
 	for event, elem in context:
 
@@ -58,7 +59,6 @@ def validateStreetSegments(context):
 			streetmap[streetname] = {}
 		if not(streetside in streetmap[streetname]):
 			streetmap[streetname][streetside] = []
-			streetmap[streetname][streetside].append(newstreet)
 		else:
 			for i in range(len(streetmap[streetname][streetside])):
 				checkstreet = streetmap[streetname][streetside][i]
@@ -67,14 +67,17 @@ def validateStreetSegments(context):
 						newstreet["errors"].append(checkstreet["id"])
 					elif checkstreet["startnum"] == newstreet["startnum"] and checkstreet["endnum"] == newstreet["endnum"]:
 						streetmap[streetname][streetside][i]["duplicates"].append(newstreet["id"])
-						break
+						isDuplicate = True
 					else:
 						newstreet["warnings"].append(checkstreet["id"])
+		
+		if not isDuplicate:
 			streetmap[streetname][streetside].append(newstreet)
 
 		elem.clear()
 		while elem.getprevious() is not None:
 			del elem.getparent()[0]
+		isDuplicate = False
 
 	writeErrors(streetmap)
 

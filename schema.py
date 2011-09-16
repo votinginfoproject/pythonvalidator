@@ -35,13 +35,13 @@ class Schema:
 		eindicator = getXSVal(elem[0])		
 		elemDict["indicator"] = eindicator
 	
-		if eindicator == "all":
+		if eindicator == "restriction":
+			elemDict["base"] = elem[0].get("base")
+			elemDict["elements"] = []
+		else:
 			elemDict["requireds"] = []
 			elemDict["elements"] = [] 
 			counter = 0 
-		elif eindicator == "restriction":
-			elemDict["base"] = elem[0].get("base")
-			elemDict["elements"] = []
 	
 		children = elem[0].getchildren()
 		for child in children: 
@@ -163,6 +163,17 @@ class Schema:
 			if temp:
 				return temp
 
+    def getElementDataWithinBase(self, elementname, basetype):
+	for element in self.schema:
+		if basetype == element and element == "simpleType":
+			temp = self.searchSimpleElements(self.schema[element], elementname)
+			if temp:
+				return temp
+		elif (element == "complexType" or element == "element") and element == basetype:
+			temp = self.searchFirstLevelElements(self.schema[element], elementname)
+			if temp:
+				return temp
+
     def searchSimpleElements(self, elements, elementname):
 	for element in elements:
 		if element == elementname:
@@ -200,3 +211,5 @@ if __name__ == '__main__':
     print "schema.getTypeElementsWithinBase: " + str(schema.getTypeElementsWithinBase("xs:integer", "simpleType"))
     print "schema.getTypeElementsWithinBase: " + str(schema.getTypeElementsWithinBase("xs:integer", "complexType"))
     print "schema.getElementData: " + str(schema.getElementData("street_segment"))
+    print "schema.getElementData: " + str(schema.getElementData("state"))
+    print "schema.getElementDataWithinBase: " + str(schema.getElementDataWithinBase("state", "element"))
