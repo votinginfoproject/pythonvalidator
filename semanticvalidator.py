@@ -15,8 +15,8 @@ def setIntTypes(schema):
 
 def setErrorWarningFiles(fname):
 	global ferr, fwarn
-	ferr = open(fname + ".err", "w")
-	fwarn = open(fname + ".warn","w")
+	ferr = open(fname + ".semanticerr", "w")
+	fwarn = open(fname + ".semanticwarn","w")
 
 def resetStartHouseNum():
 	global startHouseNum

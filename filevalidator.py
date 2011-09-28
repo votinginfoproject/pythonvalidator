@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 import argparse, urllib, sys, os, re, schema
 from lxml import etree
 from streetsegmentvalidator import streetsegCheck
@@ -21,7 +23,8 @@ def get_parsed_args():
 
 BASESCHEMAURL = "http://election-info-standard.googlecode.com/files/vip_spec_v"
 VERSIONLIST = ["2.0","2.1","2.2","2.3","3.0"]
-sizelimit = 150000000
+SIZELIMIT = 500000000
+FEED_DIR = "/home/jensen/vip/archiver/"
 
 xmlparser = etree.XMLParser()
 version = "2.3"
@@ -36,22 +39,61 @@ if version == "2.2":
 else:
 	fschema = urllib.urlopen(BASESCHEMAURL + version + ".xsd")
 
-fname = results.files[0]
-
-data = etree.parse(open(fname),xmlparser)
-root = data.getroot()
-
 schema = schema.Schema(fschema)
 
-basicCheck = schema.xmlschema.validate(data)
+if len(results.files) <= 0:
+	
+	dirlist = os.listdir(FEED_DIR)
 
-print "Basic Schema Check for " + str(fname) + ": " + str(basicCheck)
+	for folders in dirlist:
+		if os.path.isdir(FEED_DIR + folders):
+			files = os.listdir(FEED_DIR + folders)
+			for f in files:
+				fname = FEED_DIR + folders + "/" + f
+				if os.path.isfile(fname) and fname.endswith(".xml"):
+					data = etree.parse(open(fname),xmlparser)
+					root = data.getroot()
 
-semanticCheck(root, schema, fname)
+					filesize = os.path.getsize(fname)
+					if filesize < SIZELIMIT:
+						basicCheck = schema.xmlschema.validate(data)
+						print "Basic Schema Check for " + str(f) + ": " + str(basicCheck)
+					else:
+						basicCheck = False
+					
+					semanticCheck(root, schema, fname)
+					
+					if filesize < SIZELIMIT:
+						streetsegCheck(fname)
+						data = etree.parse(open(fname), xmlparser)
+						root = data.getroot()
+					else:
+						print "File too large to run street segment check on"
+					
+					if not(basicCheck):
+						fullrequiredCheck(root, schema, fname)
+else:
+	files = results.files[0]
+	for fname in files:
+		data = etree.parse(open(fname),xmlparser)
+		root = data.getroot()
 
-root = data.getroot()
+		filesize = os.path.getsize(fname)
+		if filesize < SIZELIMIT:
+			basicCheck = schema.xmlschema.validate(data)
+			print "Basic Schema Check for " + str(f) + ": " + str(basicCheck)
+		else:
+			basicCheck = False
+					
+		semanticCheck(root, schema, fname)
+					
+		if filesize < SIZELIMIT:
+			streetsegCheck(fname)
+			data = etree.parse(open(fname), xmlparser)
+			root = data.getroot()
+		else:
+			print "File too large to run street segment check on"
+					
+		if not(basicCheck):
+			fullrequiredCheck(root, schema, fname)
 
-streetsegCheck(fname)
-
-#if not(basicCheck):
-#	fullrequiredCheck(root,schema.schema,fname)

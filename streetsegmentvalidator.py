@@ -22,7 +22,7 @@ def getFields(elements):
 	for element in elements:
 		if element.tag == "non_house_address":
 			elementmap.update(getFields(element))
-		else:
+		elif element.text is not None:
 			elementmap[element.tag] = element.text.strip()
 	return elementmap
 
