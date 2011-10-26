@@ -16,7 +16,7 @@ import glob
 EXTRACT_PATH = "extracted"
 BASESCHEMAURL = "http://election-info-standard.googlecode.com/files/vip_spec_v"
 VERSIONLIST = ["2.0","2.1","2.2","2.3","3.0"]
-SIZELIMIT = 500000000
+SIZELIMIT = 700000000
 FEED_DIR = "/home/votinginfoproject/feeds/"
 
 m = magic.Magic()
@@ -52,7 +52,7 @@ def find_largest(file_list):
 			large_name = f
 	return large_name
 
-def check_file(path, fname):
+def extract_file(path, fname):
 	ftype = m.from_file(fname)
 	if ftype.find("gzip") >= 0:
 		gz = gzip.GzipFile(fname, 'rb');
@@ -79,7 +79,8 @@ def check_file(path, fname):
 		zf.extractall(path=path+"/"+EXTRACT_PATH)
 	else:
 		return fname
-	if fname.find("extracted/") >= 0:
+
+	if fname.find(EXTRACT_PATH + "/") >= 0:
 		os.remove(fname)
 	flist = glob.glob(path + "/" + EXTRACT_PATH + "/*")
 	if len(flist) > 1:
@@ -106,31 +107,28 @@ if results.directory or len(results.files) <= 0:
 	else:
 		directory = FEED_DIR
 
-        dirlist = os.listdir(directory)
-        for folders in dirlist:
-                if os.path.isfile(directory + folders) and folders.endswith(".xml"):
-                        files.append(directory + folders)
-		elif os.path.isfile(directory + folders):
-			decompressed = check_file(directory, folders)
-			if decompressed.endswith(".xml"):
-				files.append(decompressed)
-                elif os.path.isdir(directory + folders):
-                        fnames = os.listdir(directory + folders)
-                        for fname in fnames:
-                                path = directory + folders + "/" + fname
-                                if os.path.isfile(path) and path.endswith(".xml"):
-                                        files.append(path)
-				elif os.path.isfile(directory + folders):
-					decompressed = check_file(directory, folders)
-					if decompressed.endswith(".xml"):
-						files.append(decompressed)
+	for root, dirs, files in os.walk(directory):
+		for name in files:
+			path = root + "/" + name
+			if path.find("/.") > 0 or path.endswith("~"):
+				continue
+			elif path.endswith(".xml"):
+				files.append(path)
+			else:
+				ftype = m.from_file(path)
+				if ftype.lower().find("zip") or ftype.find("POSIX tar") or ftype.find("RAR"):
+					extracted = extract_file(root, name)
+					if extracted.endswith(".xml"):
+						files.append(extracted)
+						
 if len(results.files) > 0:
         fnames = results.files
         for f in fnames:
                 files.append(f)
 
 for fname in files:
-        data = etree.parse(open(fname),xmlparser)
+        
+	data = etree.parse(open(fname),xmlparser)
         root = data.getroot()
 
         filesize = os.path.getsize(fname)
