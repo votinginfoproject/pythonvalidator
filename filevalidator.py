@@ -18,6 +18,7 @@ BASESCHEMAURL = "http://election-info-standard.googlecode.com/files/vip_spec_v"
 VERSIONLIST = ["2.0","2.1","2.2","2.3","3.0"]
 SIZELIMIT = 700000000
 FEED_DIR = "/home/votinginfoproject/feeds/"
+OUTPUT_DIR = os.getcwd() + "/feedlogs"
 
 m = magic.Magic()
 
@@ -39,6 +40,9 @@ def get_parsed_args():
 	
 	parser.add_argument('-f', action='append', dest='files',
                         default=[], help='files to validate',)
+
+	parser.add_argument('-o', action='store', dest='output',
+                        help='output directory',)
 
 	return parser.parse_args()
 
@@ -167,7 +171,23 @@ if len(results.files) > 0:
         for f in fnames:
                 files.append(f)
 
+if results.output:
+	outputdir = results.output
+else:
+	outputdir = OUTPUT_DIR
+if not os.path.exists(outputdir):
+	os.makedirs(outputdir)
+
 for fname in files:
+	basename = get_base_name(fname)
+	fulldir = outputdir + "/" + basename + "logs"
+
+	if not os.path.exists(fulldir):
+		os.makedirs(fulldir)
+
+	#pass output dir to everything
+	#zip at end
+	#remove extracted files and directories, requires another cycle through the files at the end
 	print fname        
 	data = etree.parse(open(fname),xmlparser)
         root = data.getroot()
@@ -179,14 +199,15 @@ for fname in files:
         else:
                 basicCheck = False
 
-        semanticCheck(root, schema, fname)
+        semanticCheck(root, schema, basename, fulldir)
 
         if filesize < SIZELIMIT:
-                streetsegCheck(fname)
-                data = etree.parse(open(fname), xmlparser)
-                root = data.getroot()
+                streetsegCheck(fname, basename, fulldir)
+		if not(basicCheck):
+	                data = etree.parse(open(fname), xmlparser)
+        	        root = data.getroot()
         else:
                 print "File too large to run street segment check on"
 
         if not(basicCheck):
-                fullrequiredCheck(root, schema, fname)
+                fullrequiredCheck(root, schema, basename, fulldir)

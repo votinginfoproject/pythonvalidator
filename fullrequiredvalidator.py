@@ -1,8 +1,8 @@
 import schema
 
-def setErrorFile(fname):
+def setErrorFile(basename, fulldir):
 	global ferr
-	ferr = open(fname + "fullerrors.err", "w")
+	ferr = open(fulldir + "/" + basename + "fullerrors.err", "w")
 
 def setComplexTypes(schema):
 	global complexTypes
@@ -56,9 +56,6 @@ def checkComplex(elements, elementid, ctype):
 	checkRequired(childlist, elementid, complexTypes[ctype]["requireds"])
 
 def checkAll(children, elementid, elementData):
-	if elementid == '991034307676':
-		print children
-		print children[5].getchildren()
 	childlist = checkAllBasic(children, elementid, elementData["elementnames"])
 	checkRequired(childlist, elementid, elementData["requireds"])
 
@@ -80,10 +77,6 @@ def checkData(root, schema):
 	for element in root:
 		elementid = element.get("id")
 		children = element.getchildren()
-		if elementid == '991034307676':
-			print children
-			print children[5].getchildren()
-	
 		if not "name" in elementTypeData or elementTypeData["name"] != element.tag:
 			elementTypeData = getElementTypeData(element.tag, schema)
 		if elementTypeData["indicator"] == "all":
@@ -91,13 +84,13 @@ def checkData(root, schema):
 		else:
 			checkSequence(children, elementid, elementTypeData)
 			
-def fullrequiredCheck(root, schema, fname):
-	setErrorFile(fname)
+def fullrequiredCheck(root, schema, basename, fulldir):
+	setErrorFile(basename, fulldir)
 	setComplexTypes(schema)
 
-	print "Running full check on required xml fields"
+	print "Running full check on required xml fields for " + basename
 	
 	checkData(root, schema)
 
-	print "Finished full required xml field check, data located in " + fname + "fullerrors.err"
+	print "Finished full required xml field check for " + basename
 	ferr.close()

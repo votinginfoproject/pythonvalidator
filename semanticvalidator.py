@@ -13,10 +13,10 @@ def setIntTypes(schema):
 	global intList
 	intList = schema.getAllTypeElements("xs:integer")
 
-def setErrorWarningFiles(fname):
+def setErrorWarningFiles(basename, fulldir):
 	global ferr, fwarn
-	ferr = open(fname + ".semanticerr", "w")
-	fwarn = open(fname + ".semanticwarn","w")
+	ferr = open(fulldir + "/" + basename + ".semanticerr", "w")
+	fwarn = open(fulldir + "/" + basename + ".semanticwarn","w")
 
 def resetStartHouseNum():
 	global startHouseNum
@@ -99,15 +99,11 @@ def findElements(elem):
 	while elem.getprevious() is not None:
 		del elem.getparent()[0]
 
-def semanticCheck(root, schema, fname):
+def semanticCheck(root, schema, basename, fulldir):
 	setIntTypes(schema)
-	setErrorWarningFiles(fname)
-	ferr.write("Errors for " + fname + "\n")
-	ferr.write("******************************************\n")	
-	fwarn.write("Warnings for " + fname + "\n")
-	fwarn.write("******************************************\n")	
-	print "Checking file semantics...."
+	setErrorWarningFiles(basename, fulldir)
+	print "Checking file semantics for " + basename
 	findElements(root)
-	print "Finished checking file semantics, data located in " + fname + ".err and " + fname + ".err"
+	print "Finished checking file semantics for " + basename
 	ferr.close()
 	fwarn.close()

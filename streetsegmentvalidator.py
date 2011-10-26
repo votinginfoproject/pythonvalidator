@@ -106,16 +106,16 @@ def writeErrors(streetmap):
 	fwarn.close()
 	fdup.close()
 
-def setErrorWarningFiles(fname):
+def setErrorWarningFiles(basename, fulldir):
 	global ferr, fwarn, fdup
-	ferr = open(fname + "streetseg.err", "w")
-	fwarn = open(fname + "streetseg.warn","w")
-	fdup = open(fname + "streetseg.dup", "w")
+	ferr = open(fulldir + "/" + basename + "streetseg.err", "w")
+	fwarn = open(fulldir + "/" + basename + "streetseg.warn","w")
+	fdup = open(fulldir + "/" + basename + "streetseg.dup", "w")
 
-def streetsegCheck(fname):
-	setErrorWarningFiles(fname)
+def streetsegCheck(fname, basename, fulldir):
+	setErrorWarningFiles(basename, fulldir)
 
-	print "Validating street segments...."
+	print "Validating street segments for " + basename
 	context = None
 	with open(fname) as xml_doc:
 		context = etree.iterparse(xml_doc, tag="street_segment")
@@ -124,4 +124,4 @@ def streetsegCheck(fname):
 			next
 
 		validateStreetSegments(context)
-	print "Finished validating street segments, data located in " + fname + ".err, " + fname + ".warn, and " + fname + ".dup"
+	print "Finished validating street segments for " + basename
