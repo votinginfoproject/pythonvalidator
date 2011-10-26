@@ -52,41 +52,82 @@ def find_largest(file_list):
 			large_name = f
 	return large_name
 
+def find_best_match(file_list, fname):
+	name = get_base_name(fname)
+	temp_list = []
+	for f in file_list:
+		if f.find(name) >=0:
+			temp_list.append(f)
+	if len(temp_list) == 0:
+		return find_largest(file_list)
+	elif len(temp_list) == 1:
+		return temp_list[0]
+	else:
+		return find_largest(temp_list)
+
+def get_base_name(fname):
+	new = fname
+	if new.rfind("/") >= 0:
+		new = new[new.rfind("/")+1:]
+	if new.find(".") >= 0:
+		new = new[:new.find(".")]
+	return new	
+
 def extract_file(path, fname):
+
 	ftype = m.from_file(fname)
+	path_extract = path + "/" + EXTRACT_PATH
+
 	if ftype.find("gzip") >= 0:
 		gz = gzip.GzipFile(fname, 'rb');
 		filedata = gz.read()
-		if not os.path.exists(path + "/" + EXTRACT_PATH):
-			os.makedirs(path + "/" + EXTRACT_PATH)
-		w = open(path + "/" + EXTRACT_PATH + "/feed_data","w")
+		if not os.path.exists(path_extract):
+			os.makedirs(path_extract)
+		w = open(path_extract + "/feed_data","w")
 		w.write(filedata)
+		if not os.path.isdir(path_extract+"/feed_data") and not is_archived(path_extract+"/feed_data"):
+			newname = get_base_name(fname)
+			return os.rename(path_extract+"/feed_data", newname + ".xml")
 	elif ftype.find("RAR") >= 0:
 		rf = rarfile.RarFile(fname)
-		rf.extractall(path=path+"/"+EXTRACT_PATH)
+		rf.extractall(path=path_extract)
 	elif ftype.find("POSIX tar") >= 0:
 		tar = tarfile.open(fname)
-		tar.extractall(path=path+"/"+EXTRACT_PATH)
+		tar.extractall(path=path_extract)
 	elif ftype.find("bzip2") >= 0:
 		bz = bz2.BZ2File(fname, 'rb');
 		filedata = bz.read()
-		if not os.path.exists(path + "/" + EXTRACT_PATH):
-			os.makedirs(path + "/" + EXTRACT_PATH)
-		w = open(path + "/" + EXTRACT_PATH + "/feed_data","w")
+		if not os.path.exists(path_extract):
+			os.makedirs(path_extract)
+		w = open(path_extract + "/feed_data","w")
 		w.write(filedata)
+		if not os.path.isdir(path_extract+"/feed_data") and not is_archived(path_extract+"/feed_data"):
+			newname = get_base_name(fname)
+			return os.rename(path_extract+"/feed_data", newname + ".xml")
 	elif ftype.find("Zip") >= 0:
 		zf = zipfile.ZipFile(fname)
-		zf.extractall(path=path+"/"+EXTRACT_PATH)
+		zf.extractall(path=path_extract)
 	else:
 		return fname
 
 	if fname.find(EXTRACT_PATH + "/") >= 0:
 		os.remove(fname)
-	flist = glob.glob(path + "/" + EXTRACT_PATH + "/*")
+	flist = []
+	for root, dirs, dirfiles in os.walk(path_extract):
+		for name in dirfiles:
+			flist.append(root + "/" + name)
+	print str(flist)
 	if len(flist) > 1:
-		check_file(find_largest(flist))
+		fname = extract_file(path, find_best_match(flist, fname))
 	else:
-		check_file(flist[0])
+		fname = extract_file(path, flist[0])
+	return fname
+
+def is_archived(fname):
+	ftype = m.from_file(fname)
+	if ftype.lower().find("zip") or ftype.find("POSIX tar") or ftype.find("RAR"):
+		return True
+	return False 
 
 results = get_parsed_args()
 
@@ -107,19 +148,19 @@ if results.directory or len(results.files) <= 0:
 	else:
 		directory = FEED_DIR
 
-	for root, dirs, files in os.walk(directory):
-		for name in files:
+	for root, dirs, dirfiles in os.walk(directory):
+		for name in dirfiles:
 			path = root + "/" + name
-			if path.find("/.") > 0 or path.endswith("~"):
+			print path
+			if path.find("/.") > 0 or path.endswith("~") or path.find("/extracted/") > 0:
 				continue
 			elif path.endswith(".xml"):
 				files.append(path)
-			else:
-				ftype = m.from_file(path)
-				if ftype.lower().find("zip") or ftype.find("POSIX tar") or ftype.find("RAR"):
-					extracted = extract_file(root, name)
-					if extracted.endswith(".xml"):
-						files.append(extracted)
+			elif is_archived(path):
+				extracted = extract_file(root, path) 
+				if extracted.endswith(".xml"):
+					files.append(extracted)
+			print files
 						
 if len(results.files) > 0:
         fnames = results.files
@@ -127,7 +168,7 @@ if len(results.files) > 0:
                 files.append(f)
 
 for fname in files:
-        
+	print fname        
 	data = etree.parse(open(fname),xmlparser)
         root = data.getroot()
 
