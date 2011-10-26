@@ -1,17 +1,18 @@
 #!/usr/bin/python
 
-import argparse, urllib, sys, os, re, schema
-from lxml import etree
-from streetsegmentvalidator import streetsegCheck
-from semanticvalidator import semanticCheck
-from fullrequiredvalidator import fullrequiredCheck
+import argparse, urllib, sys, os, shutil, re, schema
 import magic
 import rarfile
 import tarfile
 import gzip
 import zipfile
 import bz2
-import glob
+from lxml import etree
+from streetsegmentvalidator import streetsegCheck
+from semanticvalidator import semanticCheck
+from fullrequiredvalidator import fullrequiredCheck
+from contextlib import closing
+from zipfile import ZipFile, ZIP_DEFLATED
 
 EXTRACT_PATH = "extracted"
 BASESCHEMAURL = "http://election-info-standard.googlecode.com/files/vip_spec_v"
@@ -24,6 +25,19 @@ m = magic.Magic()
 
 xmlparser = etree.XMLParser()
 version = "3.0"
+
+#zipdir method by J.F. Sebastian
+#http://stackoverflow.com/questions/296499/how-do-i-zip-the-contents-of-a-folder-using-python-version-2-5
+
+def zipdir(basedir, archivename):
+    assert os.path.isdir(basedir)
+    with closing(ZipFile(archivename, "w", ZIP_DEFLATED)) as z:
+        for root, dirs, files in os.walk(basedir):
+            #NOTE: ignore empty directories
+            for fn in files:
+                absfn = os.path.join(root, fn)
+                zfn = absfn[len(basedir)+len(os.sep):] #XXX: relative path
+                z.write(absfn, zfn)
 
 def get_parsed_args():
 
@@ -155,7 +169,6 @@ if results.directory or len(results.files) <= 0:
 	for root, dirs, dirfiles in os.walk(directory):
 		for name in dirfiles:
 			path = root + "/" + name
-			print path
 			if path.find("/.") > 0 or path.endswith("~") or path.find("/extracted/") > 0:
 				continue
 			elif path.endswith(".xml"):
@@ -185,10 +198,6 @@ for fname in files:
 	if not os.path.exists(fulldir):
 		os.makedirs(fulldir)
 
-	#pass output dir to everything
-	#zip at end
-	#remove extracted files and directories, requires another cycle through the files at the end
-	print fname        
 	data = etree.parse(open(fname),xmlparser)
         root = data.getroot()
 
@@ -211,3 +220,12 @@ for fname in files:
 
         if not(basicCheck):
                 fullrequiredCheck(root, schema, basename, fulldir)
+	
+	zipdir(fulldir, fulldir+".zip")
+	shutil.rmtree(fulldir)
+
+for fname in files:
+	if os.path.isfile(fname):
+		if fname.rfind("/extracted/") >= 0:
+			shutil.rmtree(fname[:fname.rfind("/extracted/")+len("/extracted")])
+
