@@ -1,9 +1,33 @@
-filevalidator.py is a python script to validate xml feeds.
+filevalidator.py is a python script to validate xml feeds. It accepts a list of files or a directory and a series of other parameters, and will validate either xml documents or archived versions of xml documents. All documents to be validated must end with ".xml" (in the case of archived files, the base file much end with ".xml", the file itself can be archived multiple times and may be within an archived folder though). The script creates a directory for validation logs, the default being the current directory, where the logs are initially outputted for each feed, and then archived. After validation is done, all extraneous files (such as extra log data and extracted archived files) are removed from the system.
 
-Two parameteres are accepted:
+**************************
+Command Line Parameters
+**************************
+
+The following command line parameteres are accepted:
 
 -v Version number of the schema to validate against, defaults to 2.3
--f File list of files to validate
+
+-s Schema file to validate, only necessary when you have a specific schema 
+	file you want to validate a feed against or have no internet 
+	connection to pull the version file from google, will default to 
+	using the version number pulled from google
+
+-d Directory to scan for xml feeds/archived files. Will search through all
+	subdirectories and validate the files within. Can be combined with
+	a list of files
+
+-o Output location for feed logs. Will create the folder if necessary and
+	all feed validation logs will be contained within this folder, zipped
+	up based on feed. Defaults to current working directory + "/feedlogs"
+
+-f File list of files to validate, can be combined with a directory
+
+Either a file or directory is required for the validation to work correctly.
+
+**************************
+Semantic Validation
+**************************
 
 The script will start be running a basic validation of the file against the schema, returning True if it is valid and false otherwise. After this the script runs through a semantic check where the following are validated:
 
@@ -21,6 +45,10 @@ Localities that do not match any of the types in the specification
 Total votes that are not equal to valid votes + overvotes + blank votes
 Fields supposed to be integers according to the schema that throw an error
 
+**************************
+Street Segment Validation
+**************************
+
 After the semantic validation, validation is done against street segments to check for no duplicate values with housing numbers and precincts, such as housing numbers included within two different street segment sets. The following are validated
 
 Warnings:
@@ -30,6 +58,13 @@ Errors:
 House number that overlap and contain different precinct information
 Street segements with missing required fields
 
-If the file is over 150MBs and has returned either 5000 errors or warnings, the validator finishes writing the last error to the file and returns. This is done to prevent problems with excessive memory usage that comes up with larger files.
+Duplicates:
+Street Segments with different id's that contain all the same data (address, start/end house number, polling location, etc)
+
+**************************
+Full Required Validation
+**************************
 
 The final validation check is to cycle through all fields for required  values that may be missing. The first validation check will stop after finding the first error, this check will find all of those errors and return them to the user. This will only be run if the first validation returned false. This will create an error file listing all missing fields and their element id's
+
+
